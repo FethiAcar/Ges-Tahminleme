@@ -1,3 +1,7 @@
+# -----------------------------
+# Colab için HTML oluşturma
+# -----------------------------
+html_code = """
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -6,14 +10,13 @@
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 <style>
 body { font-family: Arial, sans-serif; background-color:#f0f2f5; margin:20px; }
-h2 { text-align:center; margin-bottom:20px; font-size:1.6em; }
 table { border-collapse: collapse; width: 100%; font-size:12px; margin-bottom:10px; }
 table th, table td { border:1px solid #999; padding:4px; text-align:center; }
+h2 { text-align:center; margin-bottom:20px; }
 button { font-size:14px; font-weight:bold; color:#fff; background-color:#ff6600; padding:6px 12px; border:none; border-radius:4px; cursor:pointer; margin-top:10px; }
 button:hover { background-color:#e65c00; }
-.footer { text-align:right; font-weight:bold; font-size:1.3em; margin-top:20px; }
-#excelBtn { position: fixed; left: 20px; bottom: 20px; z-index: 999; }
-#grafikDiv { width: 80%; height:300px; margin:auto; }
+.footer { text-align:right; font-weight:bold; font-size:1.2em; margin-top:20px; }
+#excelBtn { position: fixed; left: 20px; bottom: 20px; }
 </style>
 </head>
 <body>
@@ -21,7 +24,7 @@ button:hover { background-color:#e65c00; }
 <h2>Erdemir Çelik Servis Merkezi Manisa - GES Tahmini Üretim (<span id="tarih"></span>)</h2>
 
 <div id="tableDiv"></div>
-<div id="grafikDiv"></div>
+<div id="grafikDiv" style="width:80%; height:300px; margin:auto;"></div>
 
 <p class="footer">Bu bir Fethi Acar tasarımıdır</p>
 
@@ -29,10 +32,10 @@ button:hover { background-color:#e65c00; }
 
 <script>
 // -----------------------------
-// Başlangıç verileri
+// 1. Başlangıç verileri
 // -----------------------------
 let bugun = new Date();
-bugun.setDate(bugun.getDate() + 1); // bir sonraki gün otomatik
+bugun.setDate(bugun.getDate() + 1); // başta bir sonraki gün
 
 const saatler = Array.from({length:24}, (_,i)=> i.toString().padStart(2,'0') + ":00");
 const ghi = [0,0,0,0,0,0,0,50,200,400,600,800,950,1000,950,800,600,400,200,50,0,0,0,0];
@@ -42,7 +45,7 @@ const panel_verimlilik = 0.201;
 const panel_sicaklik_katsayisi = -0.0036;
 
 // -----------------------------
-// Üretim hesaplama fonksiyonu
+// 2. Üretim hesaplama fonksiyonu
 // -----------------------------
 function hesaplaUretim() {
     let uretim = [];
@@ -57,7 +60,7 @@ function hesaplaUretim() {
 }
 
 // -----------------------------
-// Tablo ve grafik oluşturma
+// 3. Tablo ve grafik çizme
 // -----------------------------
 function goster(){
     document.getElementById("tarih").textContent = bugun.toISOString().slice(0,10);
@@ -66,7 +69,7 @@ function goster(){
     let toplam = uretim.reduce((a,b)=>a+b,0).toFixed(3);
 
     // Tablo oluştur
-    let html = '<table><tr><th>Saat</th><th>Tahmini GHI (W/m2)</th><th>Tahmini Sicaklik (°C)</th><th>Tahmini Üretim (MW)</th></tr>';
+    let html = '<table><tr><th>Saat</th><th>Tahmini GHI (W/m2)</th><th>Tahmini Sicaklik (°C)</th><th>Tahmini Uretim (MW)</th></tr>';
     for(let i=0;i<24;i++){
         html += `<tr><td>${saatler[i]}</td><td>${ghi[i]}</td><td>${sicaklik[i]}</td><td>${uretim[i]}</td></tr>`;
     }
@@ -75,13 +78,27 @@ function goster(){
     document.getElementById("tableDiv").innerHTML = html;
 
     // Grafik
-    let trace = { x: saatler, y: uretim, type: 'bar', marker: {color: 'orange'}, name: 'Tahmini Üretim' };
+    let trace = {
+        x: saatler,
+        y: uretim,
+        type: 'bar',
+        marker: {color: 'orange'},
+        name: 'Tahmini Üretim'
+    };
     let layout = {margin:{t:20,b:40,l:40,r:20}, xaxis:{title:'Saat'}, yaxis:{title:'Üretim (MW)'}};
     Plotly.newPlot('grafikDiv',[trace],layout,{displayModeBar:false});
 }
 
 // -----------------------------
-// Excel kaydet
+// 4. Gün gün arttırarak göster (her tıklamada yeni gün)
+// -----------------------------
+document.body.addEventListener("click", ()=>{
+    bugun.setDate(bugun.getDate() + 1);
+    goster();
+});
+
+// -----------------------------
+// 5. Excel kaydet
 // -----------------------------
 function excelKaydet(){
     let uretim = hesaplaUretim();
@@ -91,6 +108,7 @@ function excelKaydet(){
         csv += `${saatler[i]};${ghi[i]};${sicaklik[i]};${uretim[i]}\\n`;
     }
     csv += `Toplam;-;-;${toplam}\\n`;
+
     let blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
     let link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -99,10 +117,17 @@ function excelKaydet(){
 }
 
 // -----------------------------
-// Başlangıç gösterimi
+// 6. Başlangıç gösterimi
 // -----------------------------
 goster();
 </script>
 
 </body>
 </html>
+"""
+
+# HTML dosyasını kaydet
+with open("GES_Veri_Tahmini.html","w",encoding="utf-8") as f:
+    f.write(html_code)
+
+print("HTML dosyası oluşturuldu: GES_Veri_Tahmini.html")
