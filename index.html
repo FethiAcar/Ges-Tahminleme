@@ -1,0 +1,133 @@
+# -----------------------------
+# Colab için HTML oluşturma
+# -----------------------------
+html_code = """
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>GES Veri Tahmini</title>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<style>
+body { font-family: Arial, sans-serif; background-color:#f0f2f5; margin:20px; }
+table { border-collapse: collapse; width: 100%; font-size:12px; margin-bottom:10px; }
+table th, table td { border:1px solid #999; padding:4px; text-align:center; }
+h2 { text-align:center; margin-bottom:20px; }
+button { font-size:14px; font-weight:bold; color:#fff; background-color:#ff6600; padding:6px 12px; border:none; border-radius:4px; cursor:pointer; margin-top:10px; }
+button:hover { background-color:#e65c00; }
+.footer { text-align:right; font-weight:bold; font-size:1.2em; margin-top:20px; }
+#excelBtn { position: fixed; left: 20px; bottom: 20px; }
+</style>
+</head>
+<body>
+
+<h2>Erdemir Çelik Servis Merkezi Manisa - GES Tahmini Üretim (<span id="tarih"></span>)</h2>
+
+<div id="tableDiv"></div>
+<div id="grafikDiv" style="width:80%; height:300px; margin:auto;"></div>
+
+<p class="footer">Bu bir Fethi Acar tasarımıdır</p>
+
+<button id="excelBtn" onclick="excelKaydet()">Excel olarak kaydet</button>
+
+<script>
+// -----------------------------
+// 1. Başlangıç verileri
+// -----------------------------
+let bugun = new Date();
+bugun.setDate(bugun.getDate() + 1); // başta bir sonraki gün
+
+const saatler = Array.from({length:24}, (_,i)=> i.toString().padStart(2,'0') + ":00");
+const ghi = [0,0,0,0,0,0,0,50,200,400,600,800,950,1000,950,800,600,400,200,50,0,0,0,0];
+const sicaklik = [7,7,7,7,7,6.9,6.8,7,7.5,8,8.5,9,9.5,10,10,9.5,9,8.5,8,7.5,7,6.8,6.5,6];
+const kurulu_guc_MW = 8100 * 0.430 / 1000;
+const panel_verimlilik = 0.201;
+const panel_sicaklik_katsayisi = -0.0036;
+
+// -----------------------------
+// 2. Üretim hesaplama fonksiyonu
+// -----------------------------
+function hesaplaUretim() {
+    let uretim = [];
+    for(let i=0;i<24;i++){
+        let deltaT = Math.max(sicaklik[i]-25,0);
+        let sicaklik_faktoru = 1 + panel_sicaklik_katsayisi*deltaT;
+        let u = kurulu_guc_MW*(ghi[i]/1000)*panel_verimlilik*sicaklik_faktoru;
+        u = Math.min(u, kurulu_guc_MW);
+        uretim.push(parseFloat(u.toFixed(3)));
+    }
+    return uretim;
+}
+
+// -----------------------------
+// 3. Tablo ve grafik çizme
+// -----------------------------
+function goster(){
+    document.getElementById("tarih").textContent = bugun.toISOString().slice(0,10);
+
+    let uretim = hesaplaUretim();
+    let toplam = uretim.reduce((a,b)=>a+b,0).toFixed(3);
+
+    // Tablo oluştur
+    let html = '<table><tr><th>Saat</th><th>Tahmini GHI (W/m2)</th><th>Tahmini Sicaklik (°C)</th><th>Tahmini Uretim (MW)</th></tr>';
+    for(let i=0;i<24;i++){
+        html += `<tr><td>${saatler[i]}</td><td>${ghi[i]}</td><td>${sicaklik[i]}</td><td>${uretim[i]}</td></tr>`;
+    }
+    html += `<tr><td>Toplam</td><td>-</td><td>-</td><td>${toplam}</td></tr>`;
+    html += '</table>';
+    document.getElementById("tableDiv").innerHTML = html;
+
+    // Grafik
+    let trace = {
+        x: saatler,
+        y: uretim,
+        type: 'bar',
+        marker: {color: 'orange'},
+        name: 'Tahmini Üretim'
+    };
+    let layout = {margin:{t:20,b:40,l:40,r:20}, xaxis:{title:'Saat'}, yaxis:{title:'Üretim (MW)'}};
+    Plotly.newPlot('grafikDiv',[trace],layout,{displayModeBar:false});
+}
+
+// -----------------------------
+// 4. Gün gün arttırarak göster (her tıklamada yeni gün)
+// -----------------------------
+document.body.addEventListener("click", ()=>{
+    bugun.setDate(bugun.getDate() + 1);
+    goster();
+});
+
+// -----------------------------
+// 5. Excel kaydet
+// -----------------------------
+function excelKaydet(){
+    let uretim = hesaplaUretim();
+    let toplam = uretim.reduce((a,b)=>a+b,0).toFixed(3);
+    let csv = "Saat;Tahmini GHI (W/m2);Tahmini Sicaklik (°C);Tahmini Üretim (MW)\\n";
+    for(let i=0;i<24;i++){
+        csv += `${saatler[i]};${ghi[i]};${sicaklik[i]};${uretim[i]}\\n`;
+    }
+    csv += `Toplam;-;-;${toplam}\\n`;
+
+    let blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+    let link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "GES_Verileri_"+bugun.toISOString().slice(0,10)+".csv";
+    link.click();
+}
+
+// -----------------------------
+// 6. Başlangıç gösterimi
+// -----------------------------
+goster();
+</script>
+
+</body>
+</html>
+"""
+
+# HTML dosyasını kaydet
+with open("GES_Veri_Tahmini.html","w",encoding="utf-8") as f:
+    f.write(html_code)
+
+print("HTML dosyası oluşturuldu: GES_Veri_Tahmini.html")
